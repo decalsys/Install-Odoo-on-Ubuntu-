@@ -1,0 +1,101 @@
+1.	Connect to your server as the non-root example_user account via SSH.
+2.	Update the system packages.
+    $ sudo apt update
+3.  Install Git.
+    $ sudo apt install git -y
+4.	Install Pip.
+    $ sudo apt install python3-pip -y
+5.	Install other required dependencies.
+    $ sudo apt install -y build-essential wget python3-dev python3-venv \ python3-wheel libfreetype6-dev libxml2-dev libzip-dev libldap2-dev libsasl2-dev \ python3-setuptools node-less libjpeg-dev zlib1g-dev libpq-dev \ libxslt1-dev libldap2-dev libtiff5-dev libjpeg8-dev libopenjp2-7-dev \ liblcms2-dev libwebp-dev libharfbuzz-dev libfribidi-dev libxcb1-dev
+6.	or
+    $ sudo apt install -y build-essential wget python3-dev python3-venv python3-wheel libfreetype6-dev libxml2-dev libzip-dev libldap2-dev libsasl2-dev python3-setuptools node-less libjpeg-dev zlib1g-dev libpq-dev libxslt1-dev libldap2-dev libtiff5-dev libjpeg8-dev libopenjp2-7-dev liblcms2-dev libwebp-dev libharfbuzz-dev libfribidi-dev libxcb1-dev
+7.	Create a new odoo user.
+    $ sudo adduser odoo
+8.  Download and add PostgreSQL Repositories.
+    $ sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ `lsb_release -cs`-pgdg main" >> /etc/apt/sources.list.d/pgdg.list'
+    $ wget -q https://www.postgresql.org/media/keys/ACCC4CF8.asc -O - | sudo apt-key add -
+9.  Install PostgreSQL
+    $ sudo apt install postgresql postgresql-contrib -y
+10. Start the database server
+    $ sudo systemctl start postgresql
+11. Enable the database server to start automatically on system boot
+    $ sudo systemctl enable postgresql
+12. Change the default PostgreSQL password
+    $ sudo passwd postgres
+13. Switch to the postgres user
+    $ su - postgres
+14. Create a database user named odoo
+    $ createuser odoo
+15. Go to the PostgreSQL interactive shell
+     $ psql
+16. Give the database user odoo permission to create databases
+     ALTER USER odoo WITH CREATEDB;
+17. Exit the interactive shell
+    \q
+18. Return to the non-root example_user account
+     $ exit
+19. Download Wkhtmltopdf
+     $ sudo wget https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/wkhtmltox_0.12.6-1.bionic_amd64.deb
+20. Install Wkhtmltopdf
+     $ sudo apt install ./wkhtmltox_0.12.6-1.bionic_amd64.deb -y
+21. Create a directory for Odoo and set the owner to the Odoo user
+    $ sudo mkdir -p /opt/odoo/odoo
+    $ sudo chown -R odoo /opt/odoo
+    $ sudo chgrp -R odoo /opt/odoo
+22. Switch to the odoo user account
+     $ sudo su - odoo
+23. Clone the Odoo 14 source code from GitHub to /opt/odoo/odoo directory
+    $ git clone https://www.github.com/odoo/odoo --depth 1 --branch 14.0 /opt/odoo/odoo
+24. Create a new Python virtual environment for Odoo
+     $ cd /opt/odoo
+     $ python3 -m venv odoo-venv
+25. Activate the virtual environment
+    $ source odoo-venv/bin/activate
+26. Install all required Python modules with pip3
+    $ pip3 install wheel
+    $ pip3 install -r odoo/requirements.txt
+27. Deactivate the environment
+     $ deactivate
+28. Create a new directory for 3rd party add-ons
+    $ mkdir /opt/odoo/odoo-custom-addons
+29. Switch back to your non-root example_user account
+     $ exit
+30. Create a configuration file
+     $ sudo nano /etc/odoo.conf
+31. Add the following code to the file. Change StrongMasterPassword to a unique password
+     [options]
+     ; This is the password that allows database operations:
+     admin_passwd = StrongMasterPassword
+     db_host = False
+     db_port = False
+     db_user = odoo
+     db_password = False
+     addons_path = /opt/odoo/odoo/addons,/opt/odoo/odoo-custom-addons
+32. Create a service unit file called odoo.service
+    $ sudo nano /etc/systemd/system/odoo.service
+33. Add the following code to the file. Close and save the file
+     [Unit]
+     Description=Odoo14
+     Requires=postgresql.service
+     After=network.target postgresql.service
+
+     [Service]
+     Type=simple
+     SyslogIdentifier=odoo
+     PermissionsStartOnly=true
+     User=odoo
+     Group=odoo
+     ExecStart=/opt/odoo/odoo-venv/bin/python3 /opt/odoo/odoo/odoo-bin -c /etc/odoo.conf
+     StandardOutput=journal+console
+
+     [Install]
+     WantedBy=multi-user.target
+34. Reload system daemon for changes to take effect
+     $ sudo systemctl daemon-reload
+35. Start the Odoo service.
+     $ sudo systemctl start odoo
+36. Enable the service to start on system boot
+     $ sudo systemctl enable odoo
+37. Check the service status
+    $ sudo systemctl status odoo
+38. To access the Odoo web interface, navigate to your server's IP address at port 8069 in your web browser. For example, http://192.0.2.11:8069. You should see the database setup screen
